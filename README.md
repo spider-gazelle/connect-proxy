@@ -23,7 +23,7 @@ However you can override the environment or provide your own proxy server.
 ```crystal
 host = URI.parse("https://www.google.com")
 client = ConnectProxy::HTTPClient.new(host)
-proxy = ConnectProxy.new(host, port, {username: "admin", password: "pass"})
+proxy = ConnectProxy.new("134.209.219.234", 80, {username: "admin", password: "pass"})
 client.set_proxy(proxy)
 response = client.exec("GET", "/")
 response.success?
