@@ -4,4 +4,4 @@ install:
 script:
   - crystal spec
 env:
-  - http_proxy="http://51.38.71.101"
+  - http_proxy="http://51.38.71.101:8080"
