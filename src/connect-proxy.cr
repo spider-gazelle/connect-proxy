@@ -122,7 +122,7 @@ class ConnectProxy
     end
 
     def set_proxy(proxy : ConnectProxy? = nil)
-      socket = @socket
+      socket = @io
       return if socket && !socket.closed?
 
       if !proxy
@@ -131,9 +131,9 @@ class ConnectProxy
       end
 
       begin
-        @socket = proxy.open(@host, @port, @tls, **proxy_connection_options)
+        @io = proxy.open(@host, @port, @tls, **proxy_connection_options)
       rescue IO::Error
-        @socket = nil
+        @io = nil
       end
     end
 
