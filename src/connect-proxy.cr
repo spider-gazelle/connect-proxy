@@ -122,7 +122,7 @@ class ConnectProxy
     end
 
     def set_proxy(proxy : ConnectProxy? = nil)
-      socket = @socket
+      socket = {% if compare_versions(Crystal::VERSION, "0.36.0") < 0 %} @socket {% else %} @io {% end %}
       return if socket && !socket.closed?
 
       if !proxy
@@ -130,11 +130,19 @@ class ConnectProxy
         proxy = ConnectProxy.new(host, port)
       end
 
-      begin
-        @socket = proxy.open(@host, @port, @tls, **proxy_connection_options)
-      rescue IO::Error
-        @socket = nil
-      end
+      {% if compare_versions(Crystal::VERSION, "0.36.0") < 0 %}
+        begin
+          @socket = proxy.open(@host, @port, @tls, **proxy_connection_options)
+        rescue IO::Error
+          @socket = nil
+        end
+      {% else %}
+        begin
+          @io = proxy.open(@host, @port, @tls, **proxy_connection_options)
+        rescue IO::Error
+          @io = nil
+        end
+      {% end %}
     end
 
     def proxy_connection_options
