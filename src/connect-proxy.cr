@@ -30,7 +30,12 @@ class ConnectProxy
     proxy_url = ENV["https_proxy"]? || ENV["http_proxy"]
 
     uri = URI.parse(proxy_url)
-    ({uri.host.not_nil!, uri.port || URI.default_port(uri.scheme.not_nil!).not_nil!})
+    user = uri.user || PROXY_USER
+    pass = uri.password || PROXY_PASS
+    host = uri.host.not_nil!
+    port = uri.port || URI.default_port(uri.scheme.not_nil!).not_nil!
+    creds = {username: user, password: pass} if user && pass
+    {host, port, creds}
   rescue
     raise "Missing/malformed $http_proxy or $https_proxy in environment"
   end
@@ -126,8 +131,8 @@ class ConnectProxy
       return if socket && !socket.closed?
 
       if !proxy
-        host, port = ConnectProxy.parse_proxy_url
-        proxy = ConnectProxy.new(host, port)
+        host, port, creds = ConnectProxy.parse_proxy_url
+        proxy = ConnectProxy.new(host, port, creds)
       end
 
       {% if compare_versions(Crystal::VERSION, "0.36.0") < 0 %}
