@@ -112,28 +112,22 @@ class ConnectProxy
   end
 
   class HTTPClient < ::HTTP::Client
-    def self.new(uri : URI, tls = nil)
+    def self.new(uri : URI, tls = nil, ignore_env = false)
       inst = super(uri, tls)
-      inst.set_proxy if ConnectProxy.behind_proxy?
+      if !ignore_env && ConnectProxy.behind_proxy?
+        inst.set_proxy ConnectProxy.new(*ConnectProxy.parse_proxy_url)
+      end
 
       inst
     end
 
-    def self.new(uri : URI, tls = nil)
-      inst = super(uri, tls)
-      inst.set_proxy if ConnectProxy.behind_proxy?
-
-      yield inst
+    def self.new(uri : URI, tls = nil, ignore_env = false)
+      yield new(uri, tls, ignore_env)
     end
 
-    def set_proxy(proxy : ConnectProxy? = nil)
+    def set_proxy(proxy : ConnectProxy = nil)
       socket = {% if compare_versions(Crystal::VERSION, "0.36.0") < 0 %} @socket {% else %} @io {% end %}
       return if socket && !socket.closed?
-
-      if !proxy
-        host, port, creds = ConnectProxy.parse_proxy_url
-        proxy = ConnectProxy.new(host, port, creds)
-      end
 
       {% if compare_versions(Crystal::VERSION, "0.36.0") < 0 %}
         begin

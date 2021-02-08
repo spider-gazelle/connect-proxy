@@ -12,7 +12,7 @@ describe ConnectProxy do
 
   it "connect to a website and get a response using explicit proxy" do
     host = URI.parse("https://github.com/")
-    client = ConnectProxy::HTTPClient.new(host)
+    client = ConnectProxy::HTTPClient.new(host, ignore_env: true)
     proxy = ConnectProxy.new("51.38.71.101", 8080)
     client.set_proxy(proxy)
     response = client.exec("GET", "/")
