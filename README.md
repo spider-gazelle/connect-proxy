@@ -1,6 +1,6 @@
 # Connect Proxy
 
-[![Build Status](https://travis-ci.org/spider-gazelle/connect-proxy.svg?branch=master)](https://travis-ci.org/spider-gazelle/connect-proxy)
+[![CI](https://github.com/spider-gazelle/connect-proxy/actions/workflows/ci.yml/badge.svg)](https://github.com/spider-gazelle/connect-proxy/actions/workflows/ci.yml)
 
 A simple implementation of the [connect method](https://en.wikipedia.org/wiki/HTTP_tunnel#HTTP_CONNECT_method) for HTTP tunnelling.
 Most commonly used in [HTTP proxy servers](https://en.wikipedia.org/wiki/Proxy_server#Web_proxy_servers).
