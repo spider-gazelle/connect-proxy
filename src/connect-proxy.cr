@@ -3,10 +3,23 @@ require "socket"
 require "base64"
 require "openssl"
 
+{% if compare_versions(Crystal::VERSION, "1.0.1") < 0 %}
+  abstract class OpenSSL::SSL::Context
+    def add_x509_verify_flags(flags : OpenSSL::SSL::X509VerifyFlags)
+      param = LibSSL.ssl_ctx_get0_param(@handle)
+      ret = LibCrypto.x509_verify_param_set_flags(param, flags)
+      raise OpenSSL::Error.new("X509_VERIFY_PARAM_set_flags)") unless ret == 1
+    end
+  end
+{% end %}
+
 # Based on https://github.com/net-ssh/net-ssh/blob/master/lib/net/ssh/proxy/http.rb
 class ConnectProxy
-  PROXY_PASS = ENV["PROXY_PASSWORD"]?
-  PROXY_USER = ENV["PROXY_USERNAME"]?
+  class_property username : String? = ENV["PROXY_USERNAME"]?
+  class_property password : String? = ENV["PROXY_PASSWORD"]?
+  class_property proxy_uri : String? = ENV["https_proxy"]? || ENV["http_proxy"]? || ENV["HTTPS_PROXY"]? || ENV["HTTP_PROXY"]?
+  class_property verify_tls : Bool = ENV["PROXY_VERIFY_TLS"]? != "false"
+  class_property disable_crl_checks : Bool = ENV["PROXY_DISABLE_CRL_CHECKS"]? == "true"
 
   # The hostname or IP address of the HTTP proxy.
   getter proxy_host : String
@@ -21,17 +34,17 @@ class ConnectProxy
   # Simple check for relevant environment
   #
   def self.behind_proxy?
-    !!(ENV["https_proxy"]? || ENV["http_proxy"]? || ENV["HTTP_PROXY"]? || ENV["HTTPS_PROXY"]?)
+    !!proxy_uri
   end
 
   # Grab the host, port
   #
   def self.parse_proxy_url
-    proxy_url = ENV["https_proxy"]? || ENV["http_proxy"]? || ENV["HTTP_PROXY"]? || ENV["HTTPS_PROXY"]
+    proxy_url = proxy_uri.not_nil!
 
     uri = URI.parse(proxy_url)
-    user = uri.user || PROXY_USER
-    pass = uri.password || PROXY_PASS
+    user = uri.user || username
+    pass = uri.password || password
     host = uri.host.not_nil!
     port = uri.port || URI.default_port(uri.scheme.not_nil!).not_nil!
     creds = {username: user, password: pass} if user && pass
@@ -48,7 +61,7 @@ class ConnectProxy
   # * :user => the user name to use when authenticating to the proxy
   # * :password => the password to use when authenticating
   def initialize(host, port, auth : NamedTuple(username: String, password: String)? = nil)
-    auth = {username: PROXY_USER.as(String), password: PROXY_PASS.as(String)} if !auth && PROXY_USER && PROXY_PASS
+    auth = {username: self.class.username.as(String), password: self.class.password.as(String)} if !auth && self.class.username && self.class.password
     @credentials = Base64.strict_encode("#{auth[:username]}:#{auth[:password]}").gsub(/\s/, "") if auth
     @proxy_host = host.gsub(/^http[s]?\:\/\//, "")
     @proxy_port = port
@@ -128,6 +141,14 @@ class ConnectProxy
     def set_proxy(proxy : ConnectProxy = nil)
       socket = {% if compare_versions(Crystal::VERSION, "0.36.0") < 0 %} @socket {% else %} @io {% end %}
       return if socket && !socket.closed?
+
+      if tls = @tls
+        if !ConnectProxy.verify_tls
+          tls.verify_mode = OpenSSL::SSL::VerifyMode::NONE
+        elsif ConnectProxy.disable_crl_checks
+          tls.add_x509_verify_flags OpenSSL::SSL::X509VerifyFlags::IGNORE_CRITICAL
+        end
+      end
 
       {% if compare_versions(Crystal::VERSION, "0.36.0") < 0 %}
         begin
