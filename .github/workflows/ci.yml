@@ -19,6 +19,7 @@ jobs:
             os: ubuntu-latest
             crystal: nightly
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental }}
     container: crystallang/crystal:${{ matrix.crystal }}-alpine
     steps:
     - uses: actions/checkout@v2
@@ -30,7 +31,5 @@ jobs:
       run: crystal tool format --check
     - name: Run tests
       run: crystal spec -v --error-trace
-      with:
-        allow_failure: ${{ matrix.experimental }}
       env:
         http_proxy: http://51.38.71.101:8080
