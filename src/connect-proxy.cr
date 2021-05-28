@@ -21,13 +21,13 @@ class ConnectProxy
   # Simple check for relevant environment
   #
   def self.behind_proxy?
-    !!(ENV["https_proxy"]? || ENV["http_proxy"]?)
+    !!(ENV["https_proxy"]? || ENV["http_proxy"]? || ENV["HTTP_PROXY"]? || ENV["HTTPS_PROXY"]?)
   end
 
   # Grab the host, port
   #
   def self.parse_proxy_url
-    proxy_url = ENV["https_proxy"]? || ENV["http_proxy"]
+    proxy_url = ENV["https_proxy"]? || ENV["http_proxy"]? || ENV["HTTP_PROXY"]? || ENV["HTTPS_PROXY"]
 
     uri = URI.parse(proxy_url)
     user = uri.user || PROXY_USER
