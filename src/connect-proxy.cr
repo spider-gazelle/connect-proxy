@@ -3,6 +3,7 @@ require "socket"
 require "base64"
 require "openssl"
 
+# see: https://github.com/crystal-lang/crystal/pull/10756
 {% if compare_versions(Crystal::VERSION, "1.0.1") < 0 %}
   abstract class OpenSSL::SSL::Context
     def add_x509_verify_flags(flags : OpenSSL::SSL::X509VerifyFlags)
