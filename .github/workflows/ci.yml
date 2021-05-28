@@ -9,11 +9,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        experimental: [false]
         os: [ubuntu-latest]
         crystal:
           - latest
-          - nightly
           - 1.0.0
+        include:
+          - experimental: true
+            os: ubuntu-latest
+            crystal: nightly
     runs-on: ${{ matrix.os }}
     container: crystallang/crystal:${{ matrix.crystal }}-alpine
     steps:
@@ -26,5 +30,7 @@ jobs:
       run: crystal tool format --check
     - name: Run tests
       run: crystal spec -v --error-trace
+      with:
+        allow_failure: ${{ matrix.experimental }}
       env:
         http_proxy: http://51.38.71.101:8080
