@@ -1,5 +1,6 @@
 require "spec"
 require "../src/connect-proxy"
+require "./proxy_server"
 
 describe ConnectProxy do
   it "connect to a website and get a response" do
@@ -13,10 +14,11 @@ describe ConnectProxy do
   it "connect to a website and get a response using explicit proxy" do
     host = URI.parse("https://github.com/")
     client = ConnectProxy::HTTPClient.new(host, ignore_env: true)
-    proxy = ConnectProxy.new("51.38.71.101", 8080)
+    proxy = ConnectProxy.new("localhost", 22222)
     client.set_proxy(proxy)
     response = client.exec("GET", "/")
     response.success?.should eq(true)
+    client.close
   end
 
   it "connect to a website with CRL checks disabled" do
@@ -25,10 +27,11 @@ describe ConnectProxy do
 
     host = URI.parse("https://github.com/")
     client = ConnectProxy::HTTPClient.new(host, ignore_env: true)
-    proxy = ConnectProxy.new("51.38.71.101", 8080)
+    proxy = ConnectProxy.new("localhost", 22222)
     client.set_proxy(proxy)
     response = client.exec("GET", "/")
     response.success?.should eq(true)
+    client.close
   end
 
   it "connect to a website with TLS disabled" do
@@ -36,9 +39,27 @@ describe ConnectProxy do
 
     host = URI.parse("https://github.com/")
     client = ConnectProxy::HTTPClient.new(host, ignore_env: true)
-    proxy = ConnectProxy.new("51.38.71.101", 8080)
+    proxy = ConnectProxy.new("localhost", 22222)
     client.set_proxy(proxy)
     response = client.exec("GET", "/")
     response.success?.should eq(true)
+    client.close
+  end
+
+  it "connect to a websocket using explicit proxy" do
+    received = ""
+    host = URI.parse("wss://echo.websocket.org/")
+    proxy = ConnectProxy.new("localhost", 22222)
+
+    ws = ConnectProxy::WebSocket.new(host, proxy: proxy)
+    ws.on_message do |msg|
+      puts msg
+      received = msg
+      ws.close
+    end
+    ws.send "test"
+    ws.run
+
+    received.should eq("test")
   end
 end

@@ -91,8 +91,19 @@ class ConnectProxy
 
     if resp[:code]? == 200
       if tls
-        tls_socket = OpenSSL::SSL::Socket::Client.new(socket, context: tls, sync_close: true, hostname: host)
-        socket = tls_socket
+        if tls.is_a?(Bool) # true, but we want to get rid of the union
+          context = OpenSSL::SSL::Context::Client.new
+        else
+          context = tls
+        end
+
+        if !ConnectProxy.verify_tls
+          context.verify_mode = OpenSSL::SSL::VerifyMode::NONE
+        elsif ConnectProxy.disable_crl_checks
+          context.add_x509_verify_flags OpenSSL::SSL::X509VerifyFlags::IGNORE_CRITICAL
+        end
+
+        socket = OpenSSL::SSL::Socket::Client.new(socket, context: context, sync_close: true, hostname: host)
       end
 
       socket
@@ -119,59 +130,12 @@ class ConnectProxy
       resp[:code] = code.to_i
       resp[:reason] = reason
       resp[:headers] = headers
-    rescue
+    rescue error
+      raise IO::Error.new("parsing proxy initialization", cause: error)
     end
 
     resp
   end
-
-  class HTTPClient < ::HTTP::Client
-    def self.new(uri : URI, tls = nil, ignore_env = false)
-      inst = super(uri, tls)
-      if !ignore_env && ConnectProxy.behind_proxy?
-        inst.set_proxy ConnectProxy.new(*ConnectProxy.parse_proxy_url)
-      end
-
-      inst
-    end
-
-    def self.new(uri : URI, tls = nil, ignore_env = false)
-      yield new(uri, tls, ignore_env)
-    end
-
-    def set_proxy(proxy : ConnectProxy = nil)
-      socket = {% if compare_versions(Crystal::VERSION, "0.36.0") < 0 %} @socket {% else %} @io {% end %}
-      return if socket && !socket.closed?
-
-      if tls = @tls
-        if !ConnectProxy.verify_tls
-          tls.verify_mode = OpenSSL::SSL::VerifyMode::NONE
-        elsif ConnectProxy.disable_crl_checks
-          tls.add_x509_verify_flags OpenSSL::SSL::X509VerifyFlags::IGNORE_CRITICAL
-        end
-      end
-
-      {% if compare_versions(Crystal::VERSION, "0.36.0") < 0 %}
-        begin
-          @socket = proxy.open(@host, @port, @tls, **proxy_connection_options)
-        rescue IO::Error
-          @socket = nil
-        end
-      {% else %}
-        begin
-          @io = proxy.open(@host, @port, @tls, **proxy_connection_options)
-        rescue IO::Error
-          @io = nil
-        end
-      {% end %}
-    end
-
-    def proxy_connection_options
-      {
-        dns_timeout:     @dns_timeout,
-        connect_timeout: @connect_timeout,
-        read_timeout:    @read_timeout,
-      }
-    end
-  end
 end
+
+require "./connect-proxy/*"
