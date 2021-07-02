@@ -39,13 +39,14 @@ class ConnectProxy::WebSocket < ::HTTP::WebSocket
   def self.new(
     uri : URI | String,
     headers = HTTP::Headers.new,
-    proxy : ConnectProxy? = nil
+    proxy : ConnectProxy? = nil,
+    ignore_env : Bool = false
   )
     uri = URI.parse(uri) if uri.is_a?(String)
 
     if (host = uri.hostname) && (path = uri.request_target)
       tls = uri.scheme.in?("https", "wss")
-      return new(host, path, uri.port, tls, headers, proxy)
+      return new(host, path, uri.port, tls, headers, proxy, ignore_env)
     end
 
     raise ArgumentError.new("No host or path specified which are required.")
@@ -57,9 +58,10 @@ class ConnectProxy::WebSocket < ::HTTP::WebSocket
     port = nil,
     tls : HTTP::Client::TLSContext = nil,
     headers = HTTP::Headers.new,
-    proxy : ConnectProxy? = nil
+    proxy : ConnectProxy? = nil,
+    ignore_env : Bool = false
   )
-    if proxy.nil? && ConnectProxy.behind_proxy?
+    if proxy.nil? && !ignore_env && ConnectProxy.behind_proxy?
       proxy = ConnectProxy.new(*ConnectProxy.parse_proxy_url)
     end
 
