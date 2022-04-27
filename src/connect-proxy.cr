@@ -100,7 +100,10 @@ class ConnectProxy
         if !ConnectProxy.verify_tls
           context.verify_mode = OpenSSL::SSL::VerifyMode::NONE
         elsif ConnectProxy.disable_crl_checks
-          context.add_x509_verify_flags OpenSSL::SSL::X509VerifyFlags::IGNORE_CRITICAL
+          begin
+            context.add_x509_verify_flags OpenSSL::SSL::X509VerifyFlags::IGNORE_CRITICAL
+          rescue NotImplementedError
+          end
         end
 
         socket = OpenSSL::SSL::Socket::Client.new(socket, context: context, sync_close: true, hostname: host)

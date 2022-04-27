@@ -1,5 +1,7 @@
 require "socket"
 
+CONNECTION_COUNT = [0]
+
 spawn do
   server = TCPServer.new(22222)
   loop do
@@ -14,6 +16,8 @@ spawn do
     puts "proxy connection established"
 
     socket << "HTTP/1.1 200 OK\r\n\r\n"
+
+    CONNECTION_COUNT[0] = CONNECTION_COUNT[0] + 1
 
     spawn do
       begin

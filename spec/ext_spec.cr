@@ -1,20 +1,21 @@
 require "spec"
 require "../src/connect-proxy"
+require "../src/connect-proxy/ext/*"
 require "./proxy_server"
 
-describe ConnectProxy do
+describe "proxy ext" do
   it "connect to a website and get a response" do
     host = URI.parse("https://github.com/")
-    response = ConnectProxy::HTTPClient.new(host) do |client|
+    response = ::HTTP::Client.new(host) do |client|
       client.exec("GET", "/")
     end
     response.success?.should eq(true)
   end
 
   it "connect to a website and get a response using explicit proxy" do
-    expected_count = CONNECTION_COUNT[0] + 1
     host = URI.parse("https://github.com/")
-    client = ConnectProxy::HTTPClient.new(host, ignore_env: true)
+    expected_count = CONNECTION_COUNT[0] + 1
+    client = ::HTTP::Client.new(host, ignore_env: true)
     proxy = ConnectProxy.new("localhost", 22222)
     client.set_proxy(proxy)
     response = client.exec("GET", "/")
@@ -28,7 +29,7 @@ describe ConnectProxy do
     ConnectProxy.disable_crl_checks = true
 
     host = URI.parse("https://github.com/")
-    client = ConnectProxy::HTTPClient.new(host, ignore_env: true)
+    client = ::HTTP::Client.new(host, ignore_env: true)
     proxy = ConnectProxy.new("localhost", 22222)
     client.set_proxy(proxy)
     response = client.exec("GET", "/")
@@ -40,7 +41,7 @@ describe ConnectProxy do
     ConnectProxy.verify_tls = false
 
     host = URI.parse("https://github.com/")
-    client = ConnectProxy::HTTPClient.new(host, ignore_env: true)
+    client = ::HTTP::Client.new(host, ignore_env: true)
     proxy = ConnectProxy.new("localhost", 22222)
     client.set_proxy(proxy)
     response = client.exec("GET", "/")
@@ -49,12 +50,14 @@ describe ConnectProxy do
   end
 
   it "connect to a websocket using explicit proxy" do
-    expected_count = CONNECTION_COUNT[0] + 1
     received = ""
+
+    expected_count = CONNECTION_COUNT[0] + 1
+
     host = URI.parse("wss://ws.postman-echo.com/raw")
     proxy = ConnectProxy.new("localhost", 22222)
 
-    ws = ConnectProxy::WebSocket.new(host, proxy: proxy)
+    ws = ::HTTP::WebSocket.new(host, proxy: proxy)
     ws.on_message do |msg|
       puts msg
       received = msg

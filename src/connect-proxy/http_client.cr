@@ -1,17 +1,24 @@
 require "../connect-proxy"
 
-class ConnectProxy::HTTPClient < ::HTTP::Client
-  def self.new(uri : URI, tls = nil, ignore_env = false)
-    inst = super(uri, tls)
-    if !ignore_env && ConnectProxy.behind_proxy?
-      inst.set_proxy ConnectProxy.new(*ConnectProxy.parse_proxy_url)
+module ConnectProxy::ProxyHTTP
+  macro included
+    def self.new(uri : URI, tls : TLSContext = nil, ignore_env = false)
+      {% if @type.stringify == "HTTP::Client" %}
+        inst = previous_def(uri, tls)
+      {% else %}
+        inst = super(uri, tls)
+      {% end %}
+
+      if !ignore_env && ConnectProxy.behind_proxy?
+        inst.set_proxy ConnectProxy.new(*ConnectProxy.parse_proxy_url)
+      end
+
+      inst
     end
 
-    inst
-  end
-
-  def self.new(uri : URI, tls = nil, ignore_env = false)
-    yield new(uri, tls, ignore_env)
+    def self.new(uri : URI, tls : TLSContext = nil, ignore_env = false)
+      yield new(uri, tls, ignore_env)
+    end
   end
 
   def set_proxy(proxy : ConnectProxy = nil)
@@ -40,4 +47,8 @@ class ConnectProxy::HTTPClient < ::HTTP::Client
       read_timeout:    @read_timeout,
     }
   end
+end
+
+class ConnectProxy::HTTPClient < ::HTTP::Client
+  include ConnectProxy::ProxyHTTP
 end

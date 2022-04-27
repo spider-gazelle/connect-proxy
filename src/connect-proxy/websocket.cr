@@ -35,42 +35,48 @@ class HTTP::WebSocket::Protocol
   end
 end
 
+module ConnectProxy::ProxyWebSocket
+  macro included
+    def self.new(
+      uri : URI | String,
+      headers = HTTP::Headers.new,
+      proxy : ConnectProxy? = nil,
+      ignore_env : Bool = false
+    )
+      uri = URI.parse(uri) if uri.is_a?(String)
+
+      if (host = uri.hostname) && (path = uri.request_target)
+        tls = uri.scheme.in?("https", "wss")
+        return new(host, path, uri.port, tls, headers, proxy, ignore_env)
+      end
+
+      raise ArgumentError.new("No host or path specified which are required.")
+    end
+
+    def self.new(
+      host : String,
+      path : String,
+      port = nil,
+      tls : HTTP::Client::TLSContext = nil,
+      headers = HTTP::Headers.new,
+      proxy : ConnectProxy? = nil,
+      ignore_env : Bool = false
+    )
+      if proxy.nil? && !ignore_env && ConnectProxy.behind_proxy?
+        proxy = ConnectProxy.new(*ConnectProxy.parse_proxy_url)
+      end
+
+      if proxy
+        port ||= tls ? 443 : 80
+        socket = proxy.open(host, port, tls)
+        new(HTTP::WebSocket::Protocol.new(socket, host, path, port, headers))
+      else
+        new(HTTP::WebSocket::Protocol.new(host, path, port, tls, headers))
+      end
+    end
+  end
+end
+
 class ConnectProxy::WebSocket < ::HTTP::WebSocket
-  def self.new(
-    uri : URI | String,
-    headers = HTTP::Headers.new,
-    proxy : ConnectProxy? = nil,
-    ignore_env : Bool = false
-  )
-    uri = URI.parse(uri) if uri.is_a?(String)
-
-    if (host = uri.hostname) && (path = uri.request_target)
-      tls = uri.scheme.in?("https", "wss")
-      return new(host, path, uri.port, tls, headers, proxy, ignore_env)
-    end
-
-    raise ArgumentError.new("No host or path specified which are required.")
-  end
-
-  def self.new(
-    host : String,
-    path : String,
-    port = nil,
-    tls : HTTP::Client::TLSContext = nil,
-    headers = HTTP::Headers.new,
-    proxy : ConnectProxy? = nil,
-    ignore_env : Bool = false
-  )
-    if proxy.nil? && !ignore_env && ConnectProxy.behind_proxy?
-      proxy = ConnectProxy.new(*ConnectProxy.parse_proxy_url)
-    end
-
-    if proxy
-      port ||= tls ? 443 : 80
-      socket = proxy.open(host, port, tls)
-      new(HTTP::WebSocket::Protocol.new(socket, host, path, port, headers))
-    else
-      new(HTTP::WebSocket::Protocol.new(host, path, port, tls, headers))
-    end
-  end
+  include ConnectProxy::ProxyWebSocket
 end
