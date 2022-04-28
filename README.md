@@ -28,3 +28,20 @@ client.set_proxy(proxy)
 response = client.exec("GET", "/")
 response.success?
 ```
+
+## Forcing Proxy Support
+
+It's possible to simply introduce proxy support to any app by including extensions to the core classes.
+I wouldn't recommend this unless there are too many libs to patch / you don't control the code directly
+
+```crystal
+
+# Patches ::HTTP::Client
+require "connect-proxy/ext/http-client"
+
+# Patches ::HTTP::Websocket
+require "connect-proxy/ext/websocket"
+
+```
+
+This method requires you to use the standard proxy ENV vars
