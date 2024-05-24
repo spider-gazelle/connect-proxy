@@ -16,9 +16,34 @@ module ConnectProxy::ProxyHTTP
       inst
     end
 
-    def self.new(uri : URI, tls : TLSContext = nil, ignore_env = false)
+    def self.new(uri : URI, tls : TLSContext = nil, ignore_env = false, &)
       yield new(uri, tls, ignore_env)
     end
+
+    # for some reason previous_def doesn't work for these when extending HTTP::Client
+    {% begin %}
+      {% if @type.stringify != "HTTP::Client" %}
+        def self.new(io : IO, host : String = "", port : Int32 = 80)
+          inst = super(io, host, port)
+
+          if ConnectProxy.behind_proxy?
+            inst.set_proxy ConnectProxy.new(*ConnectProxy.parse_proxy_url)
+          end
+
+          inst
+        end
+
+        def self.new(host : String, port : Int32? = nil, tls : TLSContext = nil)
+          inst = super(host, port, tls)
+
+          if ConnectProxy.behind_proxy?
+            inst.set_proxy ConnectProxy.new(*ConnectProxy.parse_proxy_url)
+          end
+
+          inst
+        end
+      {% end %}
+    {% end %}
   end
 
   def set_proxy(proxy : ConnectProxy = nil)

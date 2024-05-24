@@ -3,12 +3,41 @@ require "../src/connect-proxy"
 require "./proxy_server"
 
 describe ConnectProxy do
+  before_each do
+    ConnectProxy.proxy_uri = nil
+  end
+
   it "connect to a website and get a response" do
     host = URI.parse("https://github.com/")
     response = ConnectProxy::HTTPClient.new(host) do |client|
       client.exec("GET", "/")
     end
     response.success?.should eq(true)
+  end
+
+  it "connect to a website and get a response using ENV Vars" do
+    ENV["HTTP_PROXY"] = "http://localhost:22222"
+    ConnectProxy.proxy_uri = "http://localhost:22222"
+    expected_count = CONNECTION_COUNT[0] + 1
+
+    host = URI.parse("https://github.com/")
+    response = ConnectProxy::HTTPClient.new(host) do |client|
+      client.exec("GET", "/")
+    end
+    response.success?.should eq(true)
+
+    expected_count.should eq(CONNECTION_COUNT[0])
+  end
+
+  it "connect to a website using class vars get a response using ENV Vars" do
+    ENV["HTTP_PROXY"] = "http://localhost:22222"
+    ConnectProxy.proxy_uri = "http://localhost:22222"
+    expected_count = CONNECTION_COUNT[0] + 1
+
+    response = ConnectProxy::HTTPClient.get("https://github.com/")
+    response.success?.should eq(true)
+
+    expected_count.should eq(CONNECTION_COUNT[0])
   end
 
   it "connect to a website and get a response using explicit proxy" do
