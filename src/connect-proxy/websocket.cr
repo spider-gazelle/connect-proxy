@@ -41,7 +41,7 @@ module ConnectProxy::ProxyWebSocket
       uri : URI | String,
       headers = HTTP::Headers.new,
       proxy : ConnectProxy? = nil,
-      ignore_env : Bool = false
+      ignore_env : Bool = false,
     )
       uri = URI.parse(uri) if uri.is_a?(String)
 
@@ -60,7 +60,7 @@ module ConnectProxy::ProxyWebSocket
       tls : HTTP::Client::TLSContext = nil,
       headers = HTTP::Headers.new,
       proxy : ConnectProxy? = nil,
-      ignore_env : Bool = false
+      ignore_env : Bool = false,
     )
       if proxy.nil? && !ignore_env && ConnectProxy.behind_proxy?
         proxy = ConnectProxy.new(*ConnectProxy.parse_proxy_url)
