@@ -66,13 +66,32 @@ module ConnectProxy::ProxyWebSocket
         proxy = ConnectProxy.new(*ConnectProxy.parse_proxy_url)
       end
 
-      if proxy
-        port ||= tls ? 443 : 80
-        socket = proxy.open(host, port, tls)
-        new(HTTP::WebSocket::Protocol.new(socket, host, path, port, headers))
-      else
-        new(HTTP::WebSocket::Protocol.new(host, path, port, tls, headers))
+      ws = if proxy
+             port ||= tls ? 443 : 80
+             socket = proxy.open(host, port, tls)
+             new(HTTP::WebSocket::Protocol.new(socket, host, path, port, headers))
+           else
+             new(HTTP::WebSocket::Protocol.new(host, path, port, tls, headers))
+           end
+
+      case tcp = ws.@ws.@io
+      when TCPSocket
+        tcp.tcp_keepalive_idle = 60
+        tcp.tcp_keepalive_interval = 30
+        tcp.tcp_keepalive_count = 3
+        tcp.keepalive = true
+        tcp.write_timeout = 10.seconds
+      when OpenSSL::SSL::Socket::Client
+        case sock = tcp.@bio.io
+        when TCPSocket
+          sock.tcp_keepalive_idle = 60
+          sock.tcp_keepalive_interval = 30
+          sock.tcp_keepalive_count = 3
+          sock.keepalive = true
+          sock.write_timeout = 10.seconds
+        end
       end
+      ws
     end
   end
 end
